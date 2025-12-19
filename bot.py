@@ -18,9 +18,9 @@ def run_web_server():
     port = int(os.environ.get('PORT', 8080))
     app.run(host='0.0.0.0', port=port)
 
-# --- কনফিগারেশন (এখানে আপনার সব এডমিনের আইডি দিন) ---
-TOKEN = "8482209684:AAF28PBodz-_aN-1Btf7AczQQxgF1ZafxuY"  # আপনার বোট টোকেন
-ADMIN_IDS = [7715549779, 987654321, 11223344]  # কমা দিয়ে একাধিক আইডি লিখুন
+# --- কনফিগারেশন ---
+TOKEN = "8357961912:AAF1NWfx1tyjpF6B6yQf3NDXsmWsDXsqBXA"  # টোকেন বসান
+ADMIN_IDS = [7715549779, 987654321]  # এডমিন আইডি বসান
 
 DATA_FILE = "bot_data.json"
 
@@ -31,12 +31,24 @@ def to_serif_bold(text):
     trans_table = str.maketrans(normal, bold)
     return text.translate(trans_table)
 
-# --- হ্যাকিং লোডিং এফেক্ট ---
+# --- ফিক্সড হ্যাকিং লোডিং এফেক্ট ---
 async def hack_loading(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # প্রথমে মেসেজ পাঠানো
     msg = await update.message.reply_text(to_serif_bold("Loading."))
-    for i in range(2): 
-        await asyncio.sleep(0.3)
+    
+    # এনিমেশন লুপ (Try-Except সহ)
+    try:
+        await asyncio.sleep(0.5)
+        await msg.edit_text(to_serif_bold("Loading.."))
+        await asyncio.sleep(0.5)
         await msg.edit_text(to_serif_bold("Loading..."))
+        await asyncio.sleep(0.5)
+        await msg.edit_text(to_serif_bold("System Connected."))
+        await asyncio.sleep(0.5)
+    except Exception as e:
+        # যদি কোনো এরর হয় (যেমন খুব দ্রুত এডিট করা), তা ইগনোর করে সামনে আগাবে
+        pass
+        
     return msg
 
 # --- ডেটা লোড/সেভ ---
@@ -72,10 +84,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     data = load_data()
     
+    # লোডিং দেখাবে এবং শেষ হলে ডিলিট করবে
     loading_msg = await hack_loading(update, context)
     await loading_msg.delete()
 
-    # একাধিক এডমিন চেক
+    # মেইন মেনু চেক
     if user.id in ADMIN_IDS:
         await update.message.reply_text(to_serif_bold(f"Welcome Admin {user.first_name}."), reply_markup=get_admin_keyboard())
         return
@@ -104,12 +117,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         save_data(data)
         await query.edit_message_text(to_serif_bold("Request Sent."))
         
-        # সব এডমিনকে নোটিফিকেশন পাঠানো
         keyboard = [[InlineKeyboardButton("Approve", callback_data=f"approve_{user.id}"),
                      InlineKeyboardButton("Decline", callback_data=f"decline_{user.id}")]]
         for admin_id in ADMIN_IDS:
-            try:
-                await context.bot.send_message(chat_id=admin_id, text=f"New Request: {user.first_name} ({user.id})", reply_markup=InlineKeyboardMarkup(keyboard))
+            try: await context.bot.send_message(chat_id=admin_id, text=f"New Request: {user.first_name} ({user.id})", reply_markup=InlineKeyboardMarkup(keyboard))
             except: pass
 
     elif query.data == "user_support":
@@ -120,8 +131,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not data["old_classes"]:
             await context.bot.send_message(chat_id=user.id, text=to_serif_bold("No classes yet."))
             return
-        # সব ওল্ড ক্লাস পাঠানোর সময় একটি নির্দিষ্ট এডমিনের চ্যাট থেকে কপি হবে
-        # এখানে ডিফল্ট হিসেবে তালিকার প্রথম এডমিনকে ব্যবহার করা হচ্ছে
         source_chat = ADMIN_IDS[0] 
         await context.bot.send_message(chat_id=user.id, text=to_serif_bold("Sending Old Classes..."))
         for item in data["old_classes"]:
@@ -135,7 +144,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if uid in data["pending"]: data["pending"].remove(uid)
             save_data(data)
             await context.bot.send_message(chat_id=uid, text=to_serif_bold("Approved! Type /start."), reply_markup=get_user_keyboard())
-            await query.edit_message_text(to_serif_bold(f"User {uid} Approved by Admin."))
+            await query.edit_message_text(to_serif_bold(f"User {uid} Approved."))
         else: await query.edit_message_text("Already Approved.")
 
     elif query.data.startswith("decline_"):
@@ -146,7 +155,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(to_serif_bold(f"User {uid} Declined."))
 
     elif query.data == "admin_view":
-        # শুধুমাত্র যে এডমিন বাটন টিপছে তাকে লিস্ট দেখাবে
         await context.bot.send_message(chat_id=user.id, text=f"Users: {data['approved']}")
 
     elif query.data == "admin_add":
@@ -175,7 +183,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = load_data()
     state = context.user_data.get('state')
 
-    # --- যে কোনো এডমিনের জন্য লজিক ---
     if user.id in ADMIN_IDS:
         if state == 'add_user':
             try:
@@ -184,8 +191,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     data["approved"].append(uid)
                     save_data(data)
                     await update.message.reply_text("Added.")
-                else:
-                    await update.message.reply_text("User already exists.")
+                else: await update.message.reply_text("Exists.")
             except: pass
             context.user_data['state'] = None
             return
@@ -201,7 +207,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             context.user_data['state'] = None
             return
 
-        # Broadcast (এডমিন যা পাঠাবে তা সব ইউজারের কাছে যাবে)
         count = 0
         for uid in data["approved"]:
             try: 
@@ -213,30 +218,21 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"Sent to {count}. Save to Old Class?", reply_markup=InlineKeyboardMarkup(btn))
         return
 
-    # --- ইউজার লজিক ---
     if state == 'support_mode':
-        # ইউজারের মেসেজ সব এডমিনের কাছে ফরোয়ার্ড হবে
         for admin_id in ADMIN_IDS:
-            try:
-                await update.message.forward(chat_id=admin_id)
+            try: await update.message.forward(chat_id=admin_id)
             except: pass
-            
         await update.message.reply_text(to_serif_bold("Sent to Admins."))
         context.user_data['state'] = None
 
-# --- মেইন রানার ---
 if __name__ == '__main__':
-    # ফ্রী সার্ভার চালু করা (Flask)
     threading.Thread(target=run_web_server).start()
-
     if not os.path.exists(DATA_FILE):
         save_data({"approved": [], "blocked": [], "pending": [], "old_classes": []})
-
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.ALL & ~filters.COMMAND, handle_message))
-    
-    print("Bot is running...")
+    print("CSIT Bot is running...")
     app.run_polling()
-        
+         
