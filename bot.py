@@ -12,7 +12,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "Bot is running perfectly!"
+    return "CSIT class bot by NTCW!"
 
 def run_web_server():
     port = int(os.environ.get('PORT', 8080))
@@ -20,7 +20,7 @@ def run_web_server():
 
 # --- কনফিগারেশন ---
 TOKEN = "8357961912:AAF1NWfx1tyjpF6B6yQf3NDXsmWsDXsqBXA"  # টোকেন বসান
-ADMIN_IDS = [7715549779, 987654321]  # এডমিন আইডি বসান
+ADMIN_IDS = [7715549779, 8186657423]  # এডমিন আইডি বসান
 
 DATA_FILE = "bot_data.json"
 
